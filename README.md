@@ -52,7 +52,6 @@ Open http://localhost:3000 to access the FOFs NFT Lending platform.
 ---
 
 ## 📝 Notes
-- This is a demo / educational project  
-- Lending and borrowing operations are simulated  
+
 - Rewards are calculated based on lending rules in `src/lendingRules.js`
 
