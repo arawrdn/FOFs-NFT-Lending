@@ -1,61 +1,69 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AppKitProvider, useAppKit } from "@reown/appkit";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { rules } from "./lendingRules";
+import { ethers } from "ethers";
+import FOFsLendingABI from "./FOFsLending.json";
 
-function LendingDashboard() {
-  const { account } = useAppKit(WagmiAdapter);
-  const [lentNFTs, setLentNFTs] = useState([]);
-  const [borrowedNFTs, setBorrowedNFTs] = useState([]);
+const CONTRACT_ADDRESS = "0x049ee6d2249c242611e1b704f0babaa8157d69eb"; // NFT CA for lending
+const LENDING_CONTRACT = "0xYourDeployedContractAddress";
 
-  const lendNFT = () => {
-    const nftId = prompt("Enter NFT ID to lend:");
-    const interest = prompt(`Set interest rate (%) [${rules.minInterest}-${rules.maxInterest}]:`);
-    const duration = prompt(`Duration in days [${rules.minDuration}-${rules.maxDuration}]:`);
-    if (!nftId) return;
+export default function App() {
+  const { account, provider } = useAppKit(WagmiAdapter);
+  const [loans, setLoans] = useState([]);
+  const [contract, setContract] = useState(null);
 
-    setLentNFTs([...lentNFTs, { nftId, interest, duration }]);
-    alert(`NFT ${nftId} lent for ${duration} days at ${interest}% interest`);
+  useEffect(() => {
+    if (provider) {
+      const signer = provider.getSigner();
+      setContract(new ethers.Contract(LENDING_CONTRACT, FOFsLendingABI, signer));
+    }
+  }, [provider]);
+
+  const lendNFT = async () => {
+    const tokenId = prompt("Enter NFT ID to lend:");
+    const interest = prompt("Interest %:");
+    const duration = prompt("Duration (days):");
+    if (!tokenId) return;
+    await contract.lendNFT(tokenId, interest, duration);
+    alert(`NFT ${tokenId} lent`);
   };
 
-  const borrowNFT = () => {
-    const nftId = prompt("Enter NFT ID to borrow:");
-    if (!nftId) return;
+  const borrowNFT = async () => {
+    const loanId = prompt("Enter Loan ID to borrow:");
+    if (!loanId) return;
+    await contract.borrowNFT(loanId);
+    alert(`Loan ${loanId} borrowed`);
+  };
 
-    setBorrowedNFTs([...borrowedNFTs, { nftId }]);
-    alert(`NFT ${nftId} borrowed`);
+  const fetchLoans = async () => {
+    const data = await contract.getLoans();
+    setLoans(data);
   };
 
   return (
-    <div style={{ padding: 30, fontFamily: "Arial, sans-serif" }}>
-      <h1>🌟 FOFs NFT Lending/Borrowing 🌟</h1>
+    <div style={{ padding: 30 }}>
+      <h1>🌟 FOFs NFT Lending/Borrowing On-Chain 🌟</h1>
       {account && <p>Account: {account}</p>}
       <button onClick={lendNFT}>Lend NFT</button>
       <button onClick={borrowNFT} style={{ marginLeft: 10 }}>Borrow NFT</button>
+      <button onClick={fetchLoans} style={{ marginLeft: 10 }}>Refresh Loans</button>
 
-      <h2>Lent NFTs</h2>
+      <h2>Active Loans</h2>
       <ul>
-        {lentNFTs.map((n, i) => (
+        {loans.map((loan, i) => (
           <li key={i}>
-            NFT {n.nftId} - {n.interest}% for {n.duration} days
+            TokenID: {loan.tokenId.toString()} | Lender: {loan.lender} | Borrower: {loan.borrower}
           </li>
-        ))}
-      </ul>
-
-      <h2>Borrowed NFTs</h2>
-      <ul>
-        {borrowedNFTs.map((n, i) => (
-          <li key={i}>NFT {n.nftId}</li>
         ))}
       </ul>
     </div>
   );
 }
 
-export default function App() {
+export default function AppWrapper() {
   return (
     <AppKitProvider>
-      <LendingDashboard />
+      <App />
     </AppKitProvider>
   );
 }
